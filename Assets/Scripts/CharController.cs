@@ -5,6 +5,8 @@ using UnityEngine;
 
 public class CharController : MonoBehaviour
 {
+    private static readonly int IsGameStarted = Animator.StringToHash("IsGameStarted");
+    private static readonly int IsFalling = Animator.StringToHash("IsFalling");
     private Rigidbody _rb;
     private bool _isWalkingRight = true;
     public Transform rayStartRight;
@@ -12,11 +14,13 @@ public class CharController : MonoBehaviour
     private Animator _animator;
     private GameManager _gameManager;
     public GameObject crystalEffect;
+    private PlaySound _soundEngine;
     
     void Awake()
     {
         _rb = GetComponent<Rigidbody>();
         _animator = GetComponent<Animator>();
+        _soundEngine = FindObjectOfType<PlaySound>();
         _gameManager = FindObjectOfType<GameManager>();
     }
 
@@ -28,7 +32,7 @@ public class CharController : MonoBehaviour
         }
         else
         {
-            _animator.SetTrigger("IsGameStarted");
+            _animator.SetTrigger(IsGameStarted);
         }
         _rb.transform.position = transform.position +  transform.forward * (Time.deltaTime * 2);
         
@@ -44,9 +48,9 @@ public class CharController : MonoBehaviour
         bool rightSideFalling = !Physics.Raycast(rayStartRight.position, -transform.up, out var rightSideHit, Mathf.Infinity);
         bool leftSideFalling = !Physics.Raycast(rayStartLeft.position, -transform.up, out var leftSideHit, Mathf.Infinity);
 
-        if (rightSideFalling && leftSideFalling)
+        if (rightSideFalling && leftSideFalling && transform.position.y < -0.1f)
         {
-            _animator.SetTrigger("IsFalling");
+            _animator.SetTrigger(IsFalling);
         }
         if (transform.position.y < -10)
         {
@@ -56,15 +60,14 @@ public class CharController : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.tag == "Crystal")
-        {
-            _gameManager.IncreaseScore();
+        if (!other.CompareTag("Crystal")) return;
+        
+        _gameManager.IncreaseScore();
             
-            GameObject effect = Instantiate(crystalEffect, transform.position + Vector3.up * 0.5f, Quaternion.identity);
-            Destroy(effect, 2.0f);
-            Destroy(other.gameObject);
-            
-        }
+        var effect = Instantiate(crystalEffect, transform.position + Vector3.up * 0.5f, Quaternion.identity);
+        Destroy(effect, 2.0f);
+        _soundEngine.PlayBingSound();
+        Destroy(other.gameObject);
     }
 
     private void SwitchDirection()
